@@ -33,11 +33,11 @@ a{text-decoration:none;color:inherit}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
 .panel h3{font-size:14px;color:var(--gold);margin-bottom:12px;font-weight:800}
 .row-item{display:flex;gap:10px;align-items:center;background:rgba(16,23,34,0.5);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
-.row-item img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.row-item img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--black)}
 .row-info{flex:1;min-width:0}
 .row-title{font-size:13px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row-sub{font-size:11px;color:var(--gray)}
-.btn-sm{padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700}
+.btn-sm{padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;transition:.2s}
 .btn-edit{background:rgba(198,166,106,0.12);color:var(--gold);border:1px solid var(--gold)}
 .btn-del{background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid #e74c3c}
 .btn-ok{background:var(--emerald);color:#fff} .btn-gold{background:var(--gold);color:var(--black)}
@@ -58,13 +58,7 @@ select.form-input{cursor:pointer}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gold);color:var(--black);padding:12px 22px;border-radius:24px;font-weight:700;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.err{background:#e74c3c;color:#fff} .toast.ok{background:var(--emerald);color:#fff}
-.editor-grid{display:grid;grid-template-columns:1fr;gap:12px}
-@media(min-width:640px){.editor-grid{grid-template-columns:1.5fr 1fr}}
-.canvas-wrap{background:var(--black);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;min-height:200px}
-#studioCanvas{max-width:100%;max-height:280px;border-radius:8px}
-.slider-row{margin-bottom:10px}
-.slider-row label{display:flex;justify-content:space-between;font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px}
-.slider-row input[type=range]{width:100%;accent-color:var(--gold)}
+.file-input{width:100%;padding:12px;background:rgba(16,23,34,0.7);border:1px dashed var(--gold);border-radius:10px;color:var(--ivory);cursor:pointer}
 </style>
 </head>
 <body>
@@ -82,34 +76,29 @@ const DB = {
   get(k,d){try{const v=localStorage.getItem('noir_'+k);return v?JSON.parse(v):d}catch(e){return d}},
   set(k,v){localStorage.setItem('noir_'+k,JSON.stringify(v))}
 };
-
 function svgImg(txt,bg,c){
   const s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"><rect width="400" height="500" fill="'+(bg||'#1B2938')+'"/><text x="200" y="270" text-anchor="middle" font-family="Arial" font-size="22" font-weight="bold" fill="'+(c||'#C6A66A')+'">'+txt+'</text></svg>';
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);
 }
-
 function seedIfEmpty(){
-  if(!DB.get('products')){DB.set('products',[{id:'p1',name:'ساعة فاخرة كلاسيك',price:1299,oldPrice:1599,cat:'watches',stock:12,status:'offer',rating:4.9,desc:'ساعة سويسرية',images:[svgImg('WATCH')]},{id:'p2',name:'عطر NOIR',price:599,cat:'perfumes',stock:25,status:'new',rating:4.8,desc:'عطر شرقي',images:[svgImg('PERFUME')]}]);}
-  if(!DB.get('categories')){DB.set('categories',[{id:'all',name:'الكل',icon:''},{id:'watches',name:'ساعات',icon:''},{id:'perfumes',name:'عطور',icon:''},{id:'bags',name:'حقائب',icon:''}]);}
+  if(!DB.get('products')){DB.set('products',[{id:'p1',name:'ساعة فاخرة',price:1299,oldPrice:1599,cat:'watches',stock:12,status:'offer',desc:'ساعة سويسرية',images:[svgImg('WATCH')]}]);}
+  if(!DB.get('categories')){DB.set('categories',[{id:'all',name:'الكل'},{id:'watches',name:'ساعات'},{id:'perfumes',name:'عطور'},{id:'bags',name:'حقائب'}]);}
   if(!DB.get('settings')){DB.set('settings',{storeName:'NOIR',currency:'ر.س',adminPass:'1234'});}
 }
-
 const $ = id => document.getElementById(id);
 function toast(msg,type){
   const t=$('toast'); t.textContent=msg; t.className='toast show '+(type||'');
   clearTimeout(t._t); t._t=setTimeout(()=>{t.className='toast'},2800);
 }
-
 const App = {
   closeModal(){$('genericModal').classList.remove('open')},
   showModal(html){$('genericBox').innerHTML=html;$('genericModal').classList.add('open')}
 };
-
 const Admin = {
   authed:false, tab:'dashboard',
   render(){ if(!this.authed) return this.showLock(); this.renderPanel(); },
   showLock(){
-    $('adminContent').innerHTML='<div class="lock-wrap"><div class="lock-box"><div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h2 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">لوحة الإدارة</h2><p style="color:var(--gray);font-size:12px;text-align:center;margin-bottom:16px">كلمة المرور الافتراضية: 1234</p><div class="form-group"><input class="form-input" type="password" id="adminPass" placeholder="••••"></div><button class="btn-full" onclick="Admin.unlock()">دخول</button></div></div>';
+    $('adminContent').innerHTML='<div class="lock-wrap"><div class="lock-box"><div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h2 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">لوحة الإدارة</h2><p style="color:var(--gray);font-size:12px;text-align:center;margin-bottom:16px">كلمة المرور: 1234</p><div class="form-group"><input class="form-input" type="password" id="adminPass" placeholder="••••"></div><button class="btn-full" onclick="Admin.unlock()">دخول</button></div></div>';
   },
   unlock(){
     const p=$('adminPass').value;
@@ -118,7 +107,7 @@ const Admin = {
   },
   renderPanel(){
     const stats=this.getStats();
-    $('adminContent').innerHTML='<div class="admin-wrap"><div class="admin-head"><h1 class="admin-title">مرحباً</h1><button class="btn-sm btn-gold" onclick="Admin.authed=false;Admin.render()">خروج</button></div><div class="admin-tabs">'+['dashboard|📊 الملخص','products|📦 المنتجات','orders|🛒 الطلبات','users|👥 العملاء','studio|🎨 AI Studio','settings|⚙️ الإعدادات'].map(t=>{const[k,l]=t.split('|');return '<button class="admin-tab '+(this.tab===k?'active':'')+'" onclick="Admin.tab=\''+k+'\';Admin.renderPanel()">'+l+'</button>'}).join('')+'</div><div id="adminTabContent"></div></div>';
+    $('adminContent').innerHTML='<div class="admin-wrap"><div class="admin-head"><h1 class="admin-title">مرحباً</h1><button class="btn-sm btn-gold" onclick="Admin.authed=false;Admin.render()">خروج</button></div><div class="admin-tabs">'+['dashboard|📊 الملخص','products|📦 المنتجات','orders|🛒 الطلبات','users|👥 العملاء','settings|⚙️ الإعدادات'].map(t=>{const[k,l]=t.split('|');return '<button class="admin-tab '+(this.tab===k?'active':'')+'" onclick="Admin.tab=\''+k+'\';Admin.renderPanel()">'+l+'</button>'}).join('')+'</div><div id="adminTabContent"></div></div>';
     this.renderTabContent(stats);
   },
   getStats(){return{products:(DB.get('products',[])||[]).length,orders:(DB.get('orders',[])||[]).length,users:(DB.get('users',[])||[]).length,revenue:(DB.get('orders',[])||[]).reduce((s,o)=>s+(o.total||0),0)}},
@@ -128,7 +117,6 @@ const Admin = {
     if(this.tab==='products')this.renderProductsTab(c);
     if(this.tab==='orders')this.renderOrdersTab(c);
     if(this.tab==='users')this.renderUsersTab(c);
-    if(this.tab==='studio')this.renderStudioTab(c);
     if(this.tab==='settings')this.renderSettingsTab(c);
   },
   renderProductsTab(c){
@@ -136,15 +124,16 @@ const Admin = {
     c.innerHTML='<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0">المنتجات ('+prods.length+')</h3><button class="btn-sm btn-gold" onclick="Admin.newProduct()">+ إضافة</button></div>'+prods.map(p=>'<div class="row-item"><img src="'+((p.images&&p.images[0])||svgImg(p.name.slice(0,10)))+'"><div class="row-info"><div class="row-title">'+p.name+'</div><div class="row-sub">'+p.price+' ر.س • مخزون: '+(p.stock||0)+'</div></div><button class="btn-sm btn-edit" onclick="Admin.editProduct(\''+p.id+'\')">تعديل</button><button class="btn-sm btn-del" onclick="Admin.delProduct(\''+p.id+'\')">حذف</button></div>').join('')+'</div>';
   },
   newProduct(){
-    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">منتج جديد</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="10"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'">'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal">عادي</option><option value="new">جديد</option><option value="offer">عرض</option></select></div><div class="form-group"><label class="form-label">صورة المنتج</label><input type="file" id="pfImageFile" accept="image/*" style="color:var(--ivory)"></div><button class="btn-full" onclick="Admin.saveProduct()">حفظ ✓</button>');
+    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">منتج جديد</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="10"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'">'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal">عادي</option><option value="new">جديد</option><option value="offer">عرض</option></select></div><div class="form-group"><label class="form-label">صورة المنتج</label><input type="file" id="pfImageFile" accept="image/*" class="file-input"></div><button class="btn-full" onclick="Admin.saveProduct()">حفظ ✓</button>');
   },
   editProduct(id){
     const p=DB.get('products',[]).find(x=>x.id===id);if(!p)return;
-    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">تعديل</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName" value="'+(p.name||'').replace(/"/g,'&quot;')+'"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc">'+(p.desc||'')+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number" value="'+p.price+'"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number" value="'+(p.oldPrice||'')+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="'+(p.stock||0)+'"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'" '+(x.id===p.cat?'selected':'')+'>'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal" '+(p.status==='normal'?'selected':'')+'>عادي</option><option value="new" '+(p.status==='new'?'selected':'')+'>جديد</option><option value="offer" '+(p.status==='offer'?'selected':'')+'>عرض</option></select></div><div class="form-group"><label class="form-label">صورة المنتج</label><input type="file" id="pfImageFile" accept="image/*" style="color:var(--ivory)"></div><button class="btn-full" onclick="Admin.saveProduct(\''+id+'\')">حفظ التعديلات ✓</button>');
+    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">تعديل</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName" value="'+(p.name||'').replace(/"/g,'&quot;')+'"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc">'+(p.desc||'')+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number" value="'+p.price+'"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number" value="'+(p.oldPrice||'')+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="'+(p.stock||0)+'"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'" '+(x.id===p.cat?'selected':'')+'>'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal" '+(p.status==='normal'?'selected':'')+'>عادي</option><option value="new" '+(p.status==='new'?'selected':'')+'>جديد</option><option value="offer" '+(p.status==='offer'?'selected':'')+'>عرض</option></select></div><div class="form-group"><label class="form-label">تغيير الصورة (اختياري)</label><input type="file" id="pfImageFile" accept="image/*" class="file-input"></div><button class="btn-full" onclick="Admin.saveProduct(\''+id+'\')">حفظ التعديلات ✓</button>');
   },
   async saveProduct(id){
     const name=$('pfName').value.trim(),desc=$('pfDesc').value.trim(),price=parseFloat($('pfPrice').value)||0,oldPrice=parseFloat($('pfOld').value)||null,stock=parseInt($('pfStock').value)||0,cat=$('pfCat').value,status=$('pfStatus').value;
     if(!name||!price)return toast('الاسم والسعر مطلوبان','err');
+    
     let imgData = null;
     const fileInput = $('pfImageFile');
     if(fileInput && fileInput.files[0]){
@@ -154,9 +143,10 @@ const Admin = {
         reader.readAsDataURL(fileInput.files[0]);
       });
     }
-    const prods = DB.get('products',[]);
+
+    const prods=DB.get('products',[]);
     if(id){
-      const p = prods.find(x => x.id === id);
+      const p=prods.find(x=>x.id===id);
       if(p){
         p.name=name;p.desc=desc;p.price=price;p.oldPrice=oldPrice;p.stock=stock;p.cat=cat;p.status=status;
         if(imgData) p.images=[imgData];
@@ -177,59 +167,14 @@ const Admin = {
     c.innerHTML='<div class="panel"><h3>العملاء ('+users.length+')</h3>'+(users.length?users.map(u=>'<div class="row-item"><div class="row-info"><div class="row-title">'+u.name+'</div><div class="row-sub">'+u.email+'</div></div><button class="btn-sm '+(u.blocked?'btn-ok':'btn-del')+'" onclick="Admin.toggleBlock(\''+u.id+'\')">'+(u.blocked?'إلغاء':'حظر')+'</button></div>').join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا يوجد عملاء</p>')+'</div>';
   },
   toggleBlock(id){const users=DB.get('users',[]);const u=users.find(x=>x.id===id);if(u){u.blocked=!u.blocked;DB.set('users',users);this.renderPanel()}},
-  renderStudioTab(c){
-    c.innerHTML='<div class="panel"><h3>🎨 AI Product Studio</h3><div class="form-group"><label class="form-label">رفع صورة</label><input type="file" id="studioUpload" accept="image/*" style="color:var(--ivory)"></div><div class="editor-grid" id="studioEditor" style="display:none"><div class="canvas-wrap"><canvas id="studioCanvas"></canvas></div><div><div class="slider-row"><label><span>السطوع</span><span id="vBright">100%</span></label><input type="range" id="sBright" min="0" max="200" value="100"></div><div class="slider-row"><label><span>التباين</span><span id="vContrast">100%</span></label><input type="range" id="sContrast" min="0" max="200" value="100"></div><div class="slider-row"><label><span>الدوران</span><span id="vRot">0°</span></label><input type="range" id="sRot" min="0" max="360" value="0"></div><button class="btn-full" onclick="Studio.save()">💾 حفظ الصورة</button></div></div></div>';
-    Studio.init();
-  },
   renderSettingsTab(c){
     const s=DB.get('settings',{});
     c.innerHTML='<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+(s.storeName||'NOIR')+'"></div><div class="form-group"><label class="form-label">العملة</label><input class="form-input" id="setCurrency" value="'+(s.currency||'ر.س')+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="'+(s.adminPass||'1234')+'"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
   },
   saveSettings(){const s=DB.get('settings',{});s.storeName=$('setName').value.trim()||'NOIR';s.currency=$('setCurrency').value.trim()||'ر.س';s.adminPass=$('setPass').value||'1234';DB.set('settings',s);toast('تم الحفظ ✓','ok')}
 };
-
-const Studio={
-  img:null,settings:{bright:100,contrast:100,rot:0,bg:'#101722'},canvas:null,ctx:null,
-  init(){
-    this.canvas=$('studioCanvas');if(!this.canvas)return;this.ctx=this.canvas.getContext('2d');
-    $('studioUpload').onchange=(e)=>{
-      const f=e.target.files[0];if(!f)return;
-      const r=new FileReader();
-      r.onload=()=>{const im=new Image();im.onload=()=>{this.img=im;$('studioEditor').style.display='grid';this.redraw()};im.src=r.result};
-      r.readAsDataURL(f);
-    };
-    ['bright','contrast','rot'].forEach(k=>{
-      const el=$('s'+k.charAt(0).toUpperCase()+k.slice(1));
-      if(el)el.oninput=(e)=>{
-        this.settings[k]=+e.target.value;
-        const label=$('v'+k.charAt(0).toUpperCase()+k.slice(1));
-        if(label)label.textContent=e.target.value+(k==='rot'?'°':'%');
-        this.redraw();
-      }
-    });
-  },
-  redraw(){
-    if(!this.img)return;
-    const s=this.settings;const max=500;const scale=Math.min(1,max/this.img.width);
-    const w=this.img.width*scale,h=this.img.height*scale;
-    const rad=s.rot*Math.PI/180;
-    const cw=Math.ceil(Math.abs(w*Math.cos(rad))+Math.abs(h*Math.sin(rad)));
-    const ch=Math.ceil(Math.abs(w*Math.sin(rad))+Math.abs(h*Math.cos(rad)));
-    this.canvas.width=cw;this.canvas.height=ch;
-    this.ctx.fillStyle=s.bg;this.ctx.fillRect(0,0,cw,ch);
-    this.ctx.save();this.ctx.translate(cw/2,ch/2);this.ctx.rotate(rad);
-    this.ctx.filter='brightness('+s.bright+'%) contrast('+s.contrast+'%)';
-    this.ctx.drawImage(this.img,-w/2,-h/2,w,h);this.ctx.restore();
-  },
-  save(){
-    if(!this.img)return toast('ارفع صورة أولاً','err');
-    const dataUrl=this.canvas.toDataURL('image/jpeg',0.9);
-    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">الصورة المحفوظة</h2><img src="'+dataUrl+'" style="width:100%;border-radius:12px;margin-bottom:14px"><a href="'+dataUrl+'" download="product-'+Date.now()+'.jpg" class="btn-full" style="display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--gold);color:var(--black)">تحميل الصورة ⬇</a>');
-  }
-};
-
 document.addEventListener('DOMContentLoaded',()=>{seedIfEmpty();Admin.render()});
-window.App=App;window.Admin=Admin;window.Studio=Studio;window.DB=DB;
+window.App=App;window.Admin=Admin;window.DB=DB;
 </script>
 </body>
 </html>
