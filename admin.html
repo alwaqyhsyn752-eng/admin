@@ -158,9 +158,13 @@ const Admin = {
     DB.set('products',prods);App.closeModal();toast('تم الحفظ ✓','ok');this.renderPanel();
   },
   delProduct(id){if(!confirm('حذف؟'))return;DB.set('products',DB.get('products',[]).filter(x=>x.id!==id));toast('تم الحذف');this.renderPanel()},
-  renderOrdersTab(c){
-    const orders=DB.get('orders',[]);
-    c.innerHTML='<div class="panel"><h3>الطلبات ('+orders.length+')</h3>'+(orders.length?orders.map(o=>'<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:12px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:6px"><div class="row-title">'+o.id+'</div><select class="form-input" style="width:auto;padding:4px 8px;font-size:11px" onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div class="row-sub">'+o.user.name+' • '+o.total+' ر.س</div></div>').join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا توجد طلبات</p>')+'</div>';
+  renderOrdersTab: async function(c){
+    const orders = await db.getOrders();
+    c.innerHTML='<div class="panel"><h3>الطلبات ('+orders.length+')</h3>'+(orders.length?orders.map(o=>{
+      const loc = (o.location_lat && o.location_lng) ? '<a href="https://maps.google.com/?q='+o.location_lat+','+o.location_lng+'" target="_blank" style="color:#527D70;font-size:11px;display:block;margin-top:4px">📍 عرض موقع العميل</a>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
+      const items = (o.order_items || []).map(i=>'<div style="font-size:11px;color:var(--gray);margin-bottom:2px">• '+i.product_name+' × '+i.quantity+' = '+(i.price*i.quantity)+' ر.س</div>').join('');
+      return '<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:14px;margin-bottom:10px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:8px"><div class="row-title">طلب #'+o.id.slice(-6)+'</div><select class="form-input" style="width:auto;padding:4px 8px;font-size:11px" onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='قيد التجهيز'?'selected':'')+'>قيد التجهيز</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:4px">👤 '+o.customer_name+'</div><div style="color:var(--ivory);font-size:12px;margin-bottom:2px">📱 '+o.phone+'</div><div style="color:var(--gray);font-size:11px;margin-bottom:6px">🏠 '+(o.address||'لا يوجد عنوان')+'</div>'+loc+'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);width:100%"><div style="color:var(--gold);font-size:11px;font-weight:700;margin-bottom:4px">المنتجات:</div>'+items+'</div><div style="color:var(--gold);font-weight:800;margin-top:6px">الإجمالي: '+o.total+' ر.س</div></div>';
+    }).join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا توجد طلبات</p>')+'</div>';
   },
   updateOrderStatus(id,status){const orders=DB.get('orders',[]);const o=orders.find(x=>x.id===id);if(o){o.status=status;DB.set('orders',orders);toast('تم التحديث ✓','ok')}},
   renderUsersTab(c){
