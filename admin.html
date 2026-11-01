@@ -115,7 +115,7 @@ const Admin = {
     const stats = { products: (prods||[]).length, orders: (orders||[]).length, users: (users||[]).length, revenue: (orders||[]).reduce((s,o)=>s+(o.total||0),0) };
     
     $('adminContent').innerHTML = '<div class="admin-wrap"><div class="admin-head"><h1 class="admin-title">مرحباً بك</h1><button class="btn-sm btn-gold" onclick="Admin.authed=false;Admin.render()">خروج</button></div><div class="admin-tabs">'+
-      ['dashboard|📊 الملخص','products|📦 المنتجات','orders|🛒 الطلبات','users|👥 العملاء','settings|⚙️ الإعدادات'].map(t=>{
+      ['dashboard|📊 الملخص','products|📦 المنتجات','categories|📂 الأقسام','orders|🛒 الطلبات','users|👥 العملاء','settings|⚙️ الإعدادات'].map(t=>{
         const[k,l]=t.split('|'); return '<button class="admin-tab '+(this.tab===k?'active':'')+'" onclick="Admin.tab=\''+k+'\';Admin.renderPanel()">'+l+'</button>';
       }).join('')+'</div><div id="adminTabContent"></div></div>';
     
@@ -130,6 +130,7 @@ const Admin = {
     if(this.tab==='products'){
       c.innerHTML = '<div class="panel"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">المنتجات ('+(prods||[]).length+')</h3><button class="btn-sm btn-gold" onclick="Admin.newProduct()">+ إضافة</button></div>'+(prods||[]).map(p=>'<div class="row-item"><img src="'+(p.image_url||'https://via.placeholder.com/50')+'"><div class="row-info"><div class="row-title">'+p.name+'</div><div class="row-sub">'+p.price+' ر.س • مخزون: '+(p.stock||0)+'</div></div><button class="btn-sm btn-edit" onclick="Admin.editProduct(\''+p.id+'\')">تعديل</button><button class="btn-sm btn-del" onclick="Admin.delProduct(\''+p.id+'\')">حذف</button></div>').join('')+'</div>';
     }
+    if(this.tab==='categories'){ this.renderCategoriesTab(c); return; }
     if(this.tab==='orders'){
       c.innerHTML = '<div class="panel"><h3>الطلبات ('+(orders||[]).length+')</h3>'+(orders||[]).map(o=>{
         const loc = (o.location_lat && o.location_lng) ? '<a href="https://www.google.com/maps?q='+o.location_lat+','+o.location_lng+'" target="_blank" style="color:#527D70;font-size:11px">📍 موقع العميل</a>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
@@ -172,7 +173,7 @@ const Admin = {
       name, price, description: $('pfDesc').value, image_url: imgUrl, store_id: STORE_ID
     }]);
     
-    if(error) return toast('فشل الحفظ','err');
+    if(error) { console.error('PRODUCT SAVE ERROR:', error); return toast('فشل: ' + error.message, 'err'); }
     toast('تم الحفظ ✓','ok');
     App.closeModal();
     this.renderPanel();
@@ -182,7 +183,38 @@ const Admin = {
   
   async updateOrderStatus(id,status){ await supabaseClient.from('orders').update({status}).eq('id',id); toast('تم التحديث ✓','ok'); },
   
-  async saveSettings(){
+
+  async renderCategoriesTab(c){
+    const { data: cats, error } = await supabaseClient.from('categories').select('*').eq('store_id',STORE_ID).order('sort_order');
+    if(error) console.error(error);
+    c.innerHTML = '<div class="panel"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">الأقسام ('+(cats||[]).length+')</h3><button class="btn-sm btn-gold" onclick="Admin.newCategory()">+ إضافة قسم</button></div>'+
+      ((cats||[]).length ? cats.map(cat=>'<div class="row-item"><div class="row-info"><div class="row-title">'+(cat.icon||'📁')+' '+cat.name+'</div></div><button class="btn-sm btn-del" onclick="Admin.delCategory(\''+cat.id+'\')">حذف</button></div>').join('') : '<p style="color:var(--gray);text-align:center;padding:20px">لا توجد أقسام</p>')+'</div>';
+  },
+  
+  newCategory(){
+    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">قسم جديد</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="catName" placeholder="مثال: ساعات"></div><div class="form-group"><label class="form-label">الأيقونة (اختياري)</label><input class="form-input" id="catIcon" placeholder="⌚" maxlength="2"></div><button class="btn-full" onclick="Admin.saveCategory()">حفظ ✓</button>');
+  },
+  
+  async saveCategory(){
+    const name = $('catName').value.trim();
+    const icon = $('catIcon').value.trim() || '📁';
+    if(!name) return toast('الاسم مطلوب','err');
+    const { error } = await supabaseClient.from('categories').insert([{ name, icon, store_id: STORE_ID }]);
+    if(error) return toast('فشل: ' + error.message, 'err');
+    toast('تم حفظ القسم ✓','ok');
+    App.closeModal();
+    this.renderPanel();
+  },
+  
+  async delCategory(id){
+    if(!confirm('حذف القسم؟')) return;
+    const { error } = await supabaseClient.from('categories').delete().eq('id', id);
+    if(error) return toast('فشل: ' + error.message, 'err');
+    toast('تم الحذف ✓','ok');
+    this.renderPanel();
+  },
+
+    async saveSettings(){
     await supabaseClient.from('settings').upsert({store_id:STORE_ID, store_name:$('setName').value, admin_pass:$('setPass').value});
     toast('تم الحفظ ✓','ok');
   }
