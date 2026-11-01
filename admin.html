@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NOIR | لوحة الإدارة</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--black:#101722;--navy:#1B2938;--gold:#C6A66A;--ivory:#F1EBDD;--emerald:#527D70;--gray:#A5ABB4;--line:rgba(198,166,106,0.18);--card:rgba(27,41,56,0.55)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -17,7 +18,7 @@ a{text-decoration:none;color:inherit}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-mark{width:40px;height:40px;border-radius:11px;background:var(--gold);display:grid;place-items:center;font-size:18px;font-weight:900;color:var(--black)}
 .brand-name{font-size:16px;font-weight:800} .brand-tag{font-size:9px;color:var(--gold)}
-.icon-btn{width:42px;height:42px;border-radius:11px;background:rgba(198,166,106,0.08);border:1px solid var(--line);display:grid;place-items:center;color:var(--gold)}
+.icon-btn{width:42px;height:42px;border-radius:11px;background:rgba(198,166,106,0.08);border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);text-decoration:none}
 .admin-wrap{padding:16px;max-width:900px;margin:0 auto}
 .admin-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
 .admin-title{font-size:20px;font-weight:900;color:var(--gold)}
@@ -26,7 +27,6 @@ a{text-decoration:none;color:inherit}
 .admin-tab{padding:9px 16px;background:rgba(27,41,56,0.6);border:1px solid var(--line);border-radius:10px;color:var(--gray);font-size:12px;font-weight:700;white-space:nowrap;transition:.2s}
 .admin-tab.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
-@media(min-width:640px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
 .stat-label{font-size:11px;color:var(--gray);margin-bottom:6px}
 .stat-val{font-size:22px;font-weight:900;color:var(--gold)}
@@ -59,10 +59,8 @@ select.form-input{cursor:pointer}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.err{background:#e74c3c;color:#fff} .toast.ok{background:var(--emerald);color:#fff}
 .file-input{width:100%;padding:12px;background:rgba(16,23,34,0.7);border:1px dashed var(--gold);border-radius:10px;color:var(--ivory);cursor:pointer}
+.footer-credit{text-align:center;padding:20px;font-size:11px;color:var(--gray);border-top:1px solid var(--line);margin-top:30px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="header">
@@ -72,167 +70,126 @@ select.form-input{cursor:pointer}
   </div>
 </div>
 <div id="adminContent"></div>
+<div class="footer-credit">📞 تطوير: حسين غلاب الخلاقي - 738990668</div>
 <div class="modal" id="genericModal" onclick="if(event.target===this)App.closeModal()"><div class="modal-box" id="genericBox"></div></div>
 <div class="toast" id="toast"></div>
+
 <script>
-const DB = {
-  get(k,d){try{const v=localStorage.getItem('noir_'+k);return v?JSON.parse(v):d}catch(e){return d}},
-  set(k,v){localStorage.setItem('noir_'+k,JSON.stringify(v))}
-};
-function svgImg(txt,bg,c){
-  const s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"><rect width="400" height="500" fill="'+(bg||'#1B2938')+'"/><text x="200" y="270" text-anchor="middle" font-family="Arial" font-size="22" font-weight="bold" fill="'+(c||'#C6A66A')+'">'+txt+'</text></svg>';
-  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);
-}
-function seedIfEmpty(){
-  if(!DB.get('products')){DB.set('products',[{id:'p1',name:'ساعة فاخرة',price:1299,oldPrice:1599,cat:'watches',stock:12,status:'offer',desc:'ساعة سويسرية',images:[svgImg('WATCH')]}]);}
-  if(!DB.get('categories')){DB.set('categories',[{id:'all',name:'الكل'},{id:'watches',name:'ساعات'},{id:'perfumes',name:'عطور'},{id:'bags',name:'حقائب'}]);}
-  if(!DB.get('settings')){DB.set('settings',{storeName:'NOIR',currency:'ر.س',adminPass:'1234'});}
-}
+const SUPABASE_URL = 'https://lihjllkvejczarfsqxxy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_9fc0c5toY2CrschBTH2kug_-k5Qtp60';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const STORE_ID = new URLSearchParams(window.location.search).get('store') || localStorage.getItem('active_store') || 'default';
+
 const $ = id => document.getElementById(id);
 function toast(msg,type){
   const t=$('toast'); t.textContent=msg; t.className='toast show '+(type||'');
   clearTimeout(t._t); t._t=setTimeout(()=>{t.className='toast'},2800);
 }
+
 const App = {
   closeModal(){$('genericModal').classList.remove('open')},
   showModal(html){$('genericBox').innerHTML=html;$('genericModal').classList.add('open')}
 };
+
 const Admin = {
   authed:false, tab:'dashboard',
   render(){ if(!this.authed) return this.showLock(); this.renderPanel(); },
+  
   showLock(){
-    $('adminContent').innerHTML='<div class="lock-wrap"><div class="lock-box"><div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h2 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">لوحة الإدارة</h2><p style="color:var(--gray);font-size:12px;text-align:center;margin-bottom:16px">كلمة المرور: 1234</p><div class="form-group"><input class="form-input" type="password" id="adminPass" placeholder="••••"></div><button class="btn-full" onclick="Admin.unlock()">دخول</button></div></div>';
+    $('adminContent').innerHTML='<div class="lock-wrap"><div class="lock-box"><div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h2 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">لوحة الإدارة</h2><p style="color:var(--gray);font-size:12px;text-align:center;margin-bottom:16px">كلمة المرور الافتراضية: 1234</p><div class="form-group"><input class="form-input" type="password" id="adminPass" placeholder="••••"></div><button class="btn-full" onclick="Admin.unlock()">دخول</button></div></div>';
   },
+  
   async unlock(){
-    const p=$('adminPass').value;
-    const s=await db.getSettings();
-    if(p===(s.adminPass||'1234')){this.authed=true;this.renderPanel();}
+    const p = $('adminPass').value;
+    const { data } = await supabaseClient.from('settings').select('*').eq('store_id',STORE_ID).limit(1);
+    const adminPass = (data && data[0]) ? data[0].admin_pass : '1234';
+    if(p === adminPass){ this.authed=true; this.renderPanel(); }
     else toast('كلمة المرور خاطئة','err');
   },
-  renderPanel(){
-    const stats=this.getStats();
-    $('adminContent').innerHTML='<div class="admin-wrap"><div class="admin-head"><h1 class="admin-title">مرحباً</h1><button class="btn-sm btn-gold" onclick="Admin.authed=false;Admin.render()">خروج</button></div><div class="admin-tabs">'+['dashboard|📊 الملخص','products|📦 المنتجات','orders|🛒 الطلبات','users|👥 العملاء','settings|⚙️ الإعدادات'].map(t=>{const[k,l]=t.split('|');return '<button class="admin-tab '+(this.tab===k?'active':'')+'" onclick="Admin.tab=\''+k+'\';Admin.renderPanel()">'+l+'</button>'}).join('')+'</div><div id="adminTabContent"></div></div>';
-    this.renderTabContent(stats);
-  },
-  getStats(){return{products:(DB.get('products',[])||[]).length,orders:(DB.get('orders',[])||[]).length,users:(DB.get('users',[])||[]).length,revenue:(DB.get('orders',[])||[]).reduce((s,o)=>s+(o.total||0),0)}},
-  renderTabContent(stats){
-    const c=$('adminTabContent');
-    if(this.tab==='dashboard'){c.innerHTML='<div class="stat-grid"><div class="stat"><div class="stat-label">المنتجات</div><div class="stat-val">'+stats.products+'</div></div><div class="stat"><div class="stat-label">الطلبات</div><div class="stat-val">'+stats.orders+'</div></div><div class="stat"><div class="stat-label">العملاء</div><div class="stat-val">'+stats.users+'</div></div><div class="stat"><div class="stat-label">الإيراد</div><div class="stat-val">'+stats.revenue+'</div></div></div>';}
-    if(this.tab==='products')this.renderProductsTab(c);
-    if(this.tab==='orders')this.renderOrdersTab(c);
-    if(this.tab==='users')this.renderUsersTab(c);
-    if(this.tab==='settings')this.renderSettingsTab(c);
-  },
-  renderProductsTab(c){
-    const prods=DB.get('products',[]);
-    c.innerHTML='<div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0">المنتجات ('+prods.length+')</h3><button class="btn-sm btn-gold" onclick="Admin.newProduct()">+ إضافة</button></div>'+prods.map(p=>'<div class="row-item"><img src="'+(p.image_url||(p.images&&p.images[0])||svgImg(p.name.slice(0,10)))+'"><div class="row-info"><div class="row-title">'+p.name+'</div><div class="row-sub">'+p.price+' ر.س • مخزون: '+(p.stock||0)+'</div></div><button class="btn-sm btn-edit" onclick="Admin.editProduct(\''+p.id+'\')">تعديل</button><button class="btn-sm btn-del" onclick="Admin.delProduct(\''+p.id+'\')">حذف</button></div>').join('')+'</div>';
-  },
-  newProduct(){
-    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">منتج جديد</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc"></textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="10"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'">'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal">عادي</option><option value="new">جديد</option><option value="offer">عرض</option></select></div><div class="form-group"><label class="form-label">صورة المنتج</label><input type="file" id="pfImageFile" accept="image/*" class="file-input"></div><button class="btn-full" onclick="Admin.saveProduct()">حفظ ✓</button>');
-  },
-  editProduct(id){
-    const p=DB.get('products',[]).find(x=>x.id===id);if(!p)return;
-    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">تعديل</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName" value="'+(p.name||'').replace(/"/g,'&quot;')+'"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc">'+(p.desc||'')+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number" value="'+p.price+'"></div><div class="form-group"><label class="form-label">السعر القديم</label><input class="form-input" id="pfOld" type="number" value="'+(p.oldPrice||'')+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="form-group"><label class="form-label">المخزون</label><input class="form-input" id="pfStock" type="number" value="'+(p.stock||0)+'"></div><div class="form-group"><label class="form-label">القسم</label><select class="form-input" id="pfCat">'+DB.get('categories',[]).filter(x=>x.id!=='all').map(x=>'<option value="'+x.id+'" '+(x.id===p.cat?'selected':'')+'>'+x.name+'</option>').join('')+'</select></div></div><div class="form-group"><label class="form-label">الحالة</label><select class="form-input" id="pfStatus"><option value="normal" '+(p.status==='normal'?'selected':'')+'>عادي</option><option value="new" '+(p.status==='new'?'selected':'')+'>جديد</option><option value="offer" '+(p.status==='offer'?'selected':'')+'>عرض</option></select></div><div class="form-group"><label class="form-label">تغيير الصورة (اختياري)</label><input type="file" id="pfImageFile" accept="image/*" class="file-input"></div><button class="btn-full" onclick="Admin.saveProduct(\''+id+'\')">حفظ التعديلات ✓</button>');
-  },
-  async saveProduct(id){
-    const name=$('pfName').value.trim(),desc=$('pfDesc').value.trim(),price=parseFloat($('pfPrice').value)||0,oldPrice=parseFloat($('pfOld').value)||null,stock=parseInt($('pfStock').value)||0,cat=$('pfCat').value,status=$('pfStatus').value;
-    if(!name||!price)return toast('الاسم والسعر مطلوبان','err');
+  
+  async renderPanel(){
+    const { data: prods } = await supabaseClient.from('products').select('*').eq('store_id',STORE_ID);
+    const { data: orders } = await supabaseClient.from('orders').select('*, order_items(*)').eq('store_id',STORE_ID).order('created_at',{ascending:false});
+    const { data: users } = await supabaseClient.from('users').select('*').eq('store_id',STORE_ID);
     
-    let imgData = null;
+    const stats = { products: (prods||[]).length, orders: (orders||[]).length, users: (users||[]).length, revenue: (orders||[]).reduce((s,o)=>s+(o.total||0),0) };
+    
+    $('adminContent').innerHTML = '<div class="admin-wrap"><div class="admin-head"><h1 class="admin-title">مرحباً بك</h1><button class="btn-sm btn-gold" onclick="Admin.authed=false;Admin.render()">خروج</button></div><div class="admin-tabs">'+
+      ['dashboard|📊 الملخص','products|📦 المنتجات','orders|🛒 الطلبات','users|👥 العملاء','settings|⚙️ الإعدادات'].map(t=>{
+        const[k,l]=t.split('|'); return '<button class="admin-tab '+(this.tab===k?'active':'')+'" onclick="Admin.tab=\''+k+'\';Admin.renderPanel()">'+l+'</button>';
+      }).join('')+'</div><div id="adminTabContent"></div></div>';
+    
+    this.renderTabContent(stats, prods, orders, users);
+  },
+  
+  renderTabContent(stats, prods, orders, users){
+    const c = $('adminTabContent');
+    if(this.tab==='dashboard'){
+      c.innerHTML = '<div class="stat-grid"><div class="stat"><div class="stat-label">المنتجات</div><div class="stat-val">'+stats.products+'</div></div><div class="stat"><div class="stat-label">الطلبات</div><div class="stat-val">'+stats.orders+'</div></div><div class="stat"><div class="stat-label">العملاء</div><div class="stat-val">'+stats.users+'</div></div><div class="stat"><div class="stat-label">الإيراد</div><div class="stat-val">'+stats.revenue+'</div></div></div>';
+    }
+    if(this.tab==='products'){
+      c.innerHTML = '<div class="panel"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">المنتجات ('+(prods||[]).length+')</h3><button class="btn-sm btn-gold" onclick="Admin.newProduct()">+ إضافة</button></div>'+(prods||[]).map(p=>'<div class="row-item"><img src="'+(p.image_url||'https://via.placeholder.com/50')+'"><div class="row-info"><div class="row-title">'+p.name+'</div><div class="row-sub">'+p.price+' ر.س • مخزون: '+(p.stock||0)+'</div></div><button class="btn-sm btn-edit" onclick="Admin.editProduct(\''+p.id+'\')">تعديل</button><button class="btn-sm btn-del" onclick="Admin.delProduct(\''+p.id+'\')">حذف</button></div>').join('')+'</div>';
+    }
+    if(this.tab==='orders'){
+      c.innerHTML = '<div class="panel"><h3>الطلبات ('+(orders||[]).length+')</h3>'+(orders||[]).map(o=>{
+        const loc = (o.location_lat && o.location_lng) ? '<a href="https://www.google.com/maps?q='+o.location_lat+','+o.location_lng+'" target="_blank" style="color:#527D70;font-size:11px">📍 موقع العميل</a>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
+        const items = (o.order_items||[]).map(i=>'<div style="font-size:11px;color:var(--gray)">• '+i.product_name+' × '+i.quantity+'</div>').join('');
+        return '<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:12px;margin-bottom:10px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:6px"><div class="row-title">طلب #'+o.id.slice(-6)+'</div><select onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)" class="form-input" style="width:auto;padding:4px 8px;font-size:11px"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div style="color:var(--gold);font-weight:700">👤 '+o.customer_name+'</div><div style="color:var(--ivory);font-size:12px">📱 '+o.phone+'</div><div style="color:var(--gray);font-size:11px">🏠 '+o.address+'</div>'+loc+'<div style="width:100%;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">'+items+'</div><div style="color:var(--gold);font-weight:800;margin-top:6px">'+o.total+' ر.س</div></div>';
+      }).join('')+'</div>';
+    }
+    if(this.tab==='users'){
+      c.innerHTML = '<div class="panel"><h3>العملاء ('+(users||[]).length+')</h3>'+(users||[]).map(u=>'<div class="row-item"><div class="row-info"><div class="row-title">'+u.full_name+'</div><div class="row-sub">'+u.email+' • '+u.phone+'</div><div class="row-sub">'+u.neighborhood+'</div></div></div>').join('')+'</div>';
+    }
+    if(this.tab==='settings'){
+      c.innerHTML = '<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+STORE_ID+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="1234"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
+    }
+  },
+  
+  newProduct(){
+    App.showModal('<button class="close-x" onclick="App.closeModal()">✕</button><h2 style="font-size:18px;font-weight:800;margin-bottom:14px">منتج جديد</h2><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" id="pfName"></div><div class="form-group"><label class="form-label">السعر</label><input class="form-input" id="pfPrice" type="number"></div><div class="form-group"><label class="form-label">الوصف</label><textarea class="form-input" id="pfDesc"></textarea></div><div class="form-group"><label class="form-label">صورة المنتج</label><input type="file" id="pfImageFile" accept="image/*" class="file-input"></div><button class="btn-full" onclick="Admin.saveProduct()">حفظ ✓</button>');
+  },
+  
+  editProduct(id){ App.showModal('<h2>تعديل المنتج</h2><p style="color:var(--gray);text-align:center;padding:20px;">سيتم إضافة التعديل قريباً</p><button class="close-x" onclick="App.closeModal()">✕</button>'); },
+  
+  async saveProduct(id){
+    const name = $('pfName').value.trim();
+    const price = parseFloat($('pfPrice').value) || 0;
+    if(!name || !price) return toast('الاسم والسعر مطلوبان','err');
+    
+    let imgUrl = null;
     const fileInput = $('pfImageFile');
     if(fileInput && fileInput.files[0]){
-      imgData = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(fileInput.files[0]);
-      });
-    }
-
-    const prods=DB.get('products',[]);
-    if(id){
-      const p=prods.find(x=>x.id===id);
-      if(p){
-        p.name=name;p.desc=desc;p.price=price;p.oldPrice=oldPrice;p.stock=stock;p.cat=cat;p.status=status;
-        if(imgData) p.images=[imgData];
+      toast('جاري رفع الصورة...');
+      const fileName = 'p_'+Date.now()+'_'+fileInput.files[0].name;
+      const { error } = await supabaseClient.storage.from('product-images').upload(fileName, fileInput.files[0]);
+      if(!error){
+        const { data } = supabaseClient.storage.from('product-images').getPublicUrl(fileName);
+        imgUrl = data.publicUrl;
       }
-    } else {
-      prods.unshift({id:'p'+Date.now(),name,desc,price,oldPrice,stock,cat,status,images:imgData?[imgData]:[svgImg(name.slice(0,10))],rating:4.5});
     }
-    DB.set('products',prods);App.closeModal();toast('تم الحفظ ✓','ok');this.renderPanel();
+    
+    const { error } = await supabaseClient.from('products').insert([{
+      name, price, description: $('pfDesc').value, image_url: imgUrl, store_id: STORE_ID
+    }]);
+    
+    if(error) return toast('فشل الحفظ','err');
+    toast('تم الحفظ ✓','ok');
+    App.closeModal();
+    this.renderPanel();
   },
-  delProduct(id){if(!confirm('حذف؟'))return;DB.set('products',DB.get('products',[]).filter(x=>x.id!==id));toast('تم الحذف');this.renderPanel()},
-  renderOrdersTab: async function(c){
-    const orders = await db.getOrders();
-    c.innerHTML='<div class="panel"><h3>الطلبات ('+orders.length+')</h3>'+(orders.length?orders.map(o=>{
-      const loc = (o.location_lat && o.location_lng) ? '<div style="display:flex;gap:6px;margin-top:6px"><button onclick="showOrderOnMap('+o.location_lat+','+o.location_lng+',\''+o.id+'\',\''+o.customer_name+'\')" style="background:#527D70;color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700">🗺️ الخريطة</button><button onclick="openGoogleMaps('+o.location_lat+','+o.location_lng+')" style="background:#1B2938;color:#C6A66A;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700">📍 جوجل ماب</button></div>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
-      const items = (o.order_items || []).map(i=>'<div style="font-size:11px;color:var(--gray);margin-bottom:2px">• '+i.product_name+' × '+i.quantity+' = '+(i.price*i.quantity)+' ر.س</div>').join('');
-      return '<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:14px;margin-bottom:10px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:8px"><div class="row-title">طلب #'+o.id.slice(-6)+'</div><select class="form-input" style="width:auto;padding:4px 8px;font-size:11px" onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='قيد التجهيز'?'selected':'')+'>قيد التجهيز</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:4px">👤 '+o.customer_name+'</div><div style="color:var(--ivory);font-size:12px;margin-bottom:2px">📱 '+o.phone+'</div><div style="color:var(--gray);font-size:11px;margin-bottom:6px">🏠 '+(o.address||'لا يوجد عنوان')+'</div>'+loc+'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);width:100%"><div style="color:var(--gold);font-size:11px;font-weight:700;margin-bottom:4px">المنتجات:</div>'+items+'</div><div style="color:var(--gold);font-weight:800;margin-top:6px">الإجمالي: '+o.total+' ر.س</div></div>';
-    }).join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا توجد طلبات</p>')+'</div>';
-  },
-  updateOrderStatus(id,status){const orders=DB.get('orders',[]);const o=orders.find(x=>x.id===id);if(o){o.status=status;DB.set('orders',orders);toast('تم التحديث ✓','ok')}},
-  renderUsersTab(c){
-    const users=DB.get('users',[]);
-    c.innerHTML='<div class="panel"><h3>العملاء ('+users.length+')</h3>'+(users.length?users.map(u=>'<div class="row-item"><div class="row-info"><div class="row-title">'+u.name+'</div><div class="row-sub">'+u.email+'</div></div><button class="btn-sm '+(u.blocked?'btn-ok':'btn-del')+'" onclick="Admin.toggleBlock(\''+u.id+'\')">'+(u.blocked?'إلغاء':'حظر')+'</button></div>').join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا يوجد عملاء</p>')+'</div>';
-  },
-  toggleBlock(id){const users=DB.get('users',[]);const u=users.find(x=>x.id===id);if(u){u.blocked=!u.blocked;DB.set('users',users);this.renderPanel()}},
-  renderSettingsTab(c){
-    const s=DB.get('settings',{});
-    c.innerHTML='<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+(s.storeName||'NOIR')+'"></div><div class="form-group"><label class="form-label">العملة</label><input class="form-input" id="setCurrency" value="'+(s.currency||'ر.س')+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="'+(s.adminPass||'1234')+'"></div>
-      <div class="form-group"><label class="form-label">اللون الأساسي (الذهبي)</label><input type="color" id="setPrimary" value="'+(s.primaryColor||'#C6A66A')+'" style="width:100%;height:45px;border-radius:10px;background:transparent;border:none"></div>
-      <div class="form-group"><label class="form-label">لون الخلفية (الداكن)</label><input type="color" id="setBg" value="'+(s.bgStart||'#101722')+'" style="width:100%;height:45px;border-radius:10px;background:transparent;border:none"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
-  },
-  async saveSettings(){try{await db.saveSettings({storeName:$('setName').value.trim()||'NOIR',currency:$('setCurrency').value.trim()||'ر.س',adminPass:$('setPass').value||'1234',primaryColor:$('setPrimary').value,bgStart:$('setBg').value});toast('تم الحفظ ✓','ok');}catch(e){toast('فشل الحفظ','err');}}
+  
+  async delProduct(id){ if(confirm('حذف؟')){ await supabaseClient.from('products').delete().eq('id',id); this.renderPanel(); } },
+  
+  async updateOrderStatus(id,status){ await supabaseClient.from('orders').update({status}).eq('id',id); toast('تم التحديث ✓','ok'); },
+  
+  async saveSettings(){
+    await supabaseClient.from('settings').upsert({store_id:STORE_ID, store_name:$('setName').value, admin_pass:$('setPass').value});
+    toast('تم الحفظ ✓','ok');
+  }
 };
 
-function haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2-lat1) * Math.PI / 180;
-  const dLng = (lng2-lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-document.addEventListener('DOMContentLoaded',()=>{seedIfEmpty();Admin.render()});
-window.App=App;window.Admin=Admin;window.DB=DB;
+document.addEventListener('DOMContentLoaded', () => Admin.render());
+window.App = App; window.Admin = Admin;
 </script>
-
-<script>
-(function() {
-  // التحقق من وجود نسخة جديدة كل 30 ثانية وعند فتح التطبيق
-  const checkUpdate = () => {
-    const currentVersion = localStorage.getItem('noir_app_version');
-    const serverVersion = 'v' + Date.now(); // في الواقع، يجب أن تأتي من الخادم، لكننا نستخدم خدعة بسيطة هنا
-    
-    // خدعة: إعادة تحميل الصفحة تلقائياً إذا كان هذا أول فتح في الجلسة
-    // أو إذا كان المستخدم قادماً من خلفية التطبيق
-    if (!sessionStorage.getItem('noir_loaded')) {
-      sessionStorage.setItem('noir_loaded', 'true');
-      // إذا كانت الصفحة محملة من الكاش، أعد تحميلها
-      if (performance.navigation.type === 1 || performance.navigation.type === 2) {
-        // لا نفعل شيئاً، الصفحة محملة بشكل طبيعي
-      }
-    }
-  };
-  
-  // إجبار التحديث عند العودة إلى التطبيق (من الخلفية)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      // إذا عاد المستخدم، تحقق من التحديث
-      const lastCheck = sessionStorage.getItem('noir_last_check');
-      const now = Date.now();
-      if (!lastCheck || now - parseInt(lastCheck) > 60000) { // كل دقيقة
-        sessionStorage.setItem('noir_last_check', now);
-        // إعادة تحميل خفيفة (بدون مسح البيانات)
-        if (navigator.onLine) {
-          window.location.reload();
-        }
-      }
-    }
-  });
-})();
-</script>
-
-
-<div style="text-align:center;padding:16px;font-size:11px;color:#A5ABB4;border-top:1px solid rgba(198,166,106,0.18);margin-top:20px">📞 حسين غلاب الخلاقي - 738990668</div>
 </body>
 </html>
