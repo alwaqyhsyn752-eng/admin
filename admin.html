@@ -61,6 +61,8 @@ select.form-input{cursor:pointer}
 .file-input{width:100%;padding:12px;background:rgba(16,23,34,0.7);border:1px dashed var(--gold);border-radius:10px;color:var(--ivory);cursor:pointer}
 .footer-credit{text-align:center;padding:20px;font-size:11px;color:var(--gray);border-top:1px solid var(--line);margin-top:30px}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="header">
@@ -133,7 +135,7 @@ const Admin = {
     if(this.tab==='categories'){ this.renderCategoriesTab(c); return; }
     if(this.tab==='orders'){
       c.innerHTML = '<div class="panel"><h3>الطلبات ('+(orders||[]).length+')</h3>'+(orders||[]).map(o=>{
-        const loc = (o.location_lat && o.location_lng) ? '<a href="https://www.google.com/maps?q='+o.location_lat+','+o.location_lng+'" target="_blank" style="color:#527D70;font-size:11px">📍 موقع العميل</a>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
+        const loc = (o.location_lat && o.location_lng) ? '<div style="display:flex;gap:6px;margin-top:6px"><button onclick="showMap('+o.location_lat+','+o.location_lng+',\''+o.customer_name+'\')" style="background:var(--emerald);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;border:none;">🗺️ الخريطة</button><button onclick="openGmaps('+o.location_lat+','+o.location_lng+')" style="background:rgba(198,166,106,0.1);color:var(--gold);padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid var(--gold);">📍 جوجل ماب</button></div>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
         const items = (o.order_items||[]).map(i=>'<div style="font-size:11px;color:var(--gray)">• '+i.product_name+' × '+i.quantity+'</div>').join('');
         return '<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:12px;margin-bottom:10px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:6px"><div class="row-title">طلب #'+o.id.slice(-6)+'</div><select onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)" class="form-input" style="width:auto;padding:4px 8px;font-size:11px"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div style="color:var(--gold);font-weight:700">👤 '+o.customer_name+'</div><div style="color:var(--ivory);font-size:12px">📱 '+o.phone+'</div><div style="color:var(--gray);font-size:11px">🏠 '+o.address+'</div>'+loc+'<div style="width:100%;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">'+items+'</div><div style="color:var(--gold);font-weight:800;margin-top:6px">'+o.total+' ر.س</div></div>';
       }).join('')+'</div>';
@@ -222,6 +224,30 @@ const Admin = {
 
 document.addEventListener('DOMContentLoaded', () => Admin.render());
 window.App = App; window.Admin = Admin;
+
+window.showMap = function(lat, lng, name) {
+  const modal = document.createElement('div');
+  modal.id = 'mapModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;flex-direction:column;padding:20px;';
+  modal.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="color:#C6A66A;font-size:16px;font-weight:800;">📍 موقع ${name}</h3>
+      <button onclick="this.closest('#mapModal').remove()" style="width:38px;height:38px;border-radius:50%;background:rgba(198,166,106,0.2);border:1px solid #C6A66A;color:#C6A66A;font-size:20px;">✕</button>
+    </div>
+    <div id="mapContainer" style="flex:1;border-radius:12px;overflow:hidden;border:1px solid rgba(198,166,106,0.3);"></div>
+  `;
+  document.body.appendChild(modal);
+  setTimeout(() => {
+    const map = L.map('mapContainer').setView([lat, lng], 16);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+    L.marker([lat, lng]).addTo(map).bindPopup(name).openPopup();
+  }, 100);
+};
+
+window.openGmaps = function(lat, lng) {
+  window.open('https://www.google.com/maps?q=' + lat + ',' + lng, '_blank');
+};
+
 </script>
 </body>
 </html>
