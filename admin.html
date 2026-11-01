@@ -101,9 +101,10 @@ const Admin = {
   showLock(){
     $('adminContent').innerHTML='<div class="lock-wrap"><div class="lock-box"><div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h2 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">لوحة الإدارة</h2><p style="color:var(--gray);font-size:12px;text-align:center;margin-bottom:16px">كلمة المرور: 1234</p><div class="form-group"><input class="form-input" type="password" id="adminPass" placeholder="••••"></div><button class="btn-full" onclick="Admin.unlock()">دخول</button></div></div>';
   },
-  unlock(){
+  async unlock(){
     const p=$('adminPass').value;
-    if(p===(DB.get('settings',{}).adminPass||'1234')){this.authed=true;this.renderPanel();}
+    const s=await db.getSettings();
+    if(p===(s.adminPass||'1234')){this.authed=true;this.renderPanel();}
     else toast('كلمة المرور خاطئة','err');
   },
   renderPanel(){
@@ -176,7 +177,7 @@ const Admin = {
     const s=DB.get('settings',{});
     c.innerHTML='<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+(s.storeName||'NOIR')+'"></div><div class="form-group"><label class="form-label">العملة</label><input class="form-input" id="setCurrency" value="'+(s.currency||'ر.س')+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="'+(s.adminPass||'1234')+'"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
   },
-  saveSettings(){const s=DB.get('settings',{});s.storeName=$('setName').value.trim()||'NOIR';s.currency=$('setCurrency').value.trim()||'ر.س';s.adminPass=$('setPass').value||'1234';DB.set('settings',s);toast('تم الحفظ ✓','ok')}
+  async saveSettings(){try{await db.saveSettings({storeName:$('setName').value.trim()||'NOIR',currency:$('setCurrency').value.trim()||'ر.س',adminPass:$('setPass').value||'1234'});toast('تم الحفظ ✓','ok');}catch(e){toast('فشل الحفظ','err');}}
 };
 document.addEventListener('DOMContentLoaded',()=>{seedIfEmpty();Admin.render()});
 window.App=App;window.Admin=Admin;window.DB=DB;
@@ -218,5 +219,7 @@ window.App=App;window.Admin=Admin;window.DB=DB;
 })();
 </script>
 
+
+<div style="text-align:center;padding:16px;font-size:11px;color:#A5ABB4;border-top:1px solid rgba(198,166,106,0.18);margin-top:20px">📞 تطوير: 738990668</div>
 </body>
 </html>
