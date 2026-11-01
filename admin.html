@@ -175,9 +175,11 @@ const Admin = {
   toggleBlock(id){const users=DB.get('users',[]);const u=users.find(x=>x.id===id);if(u){u.blocked=!u.blocked;DB.set('users',users);this.renderPanel()}},
   renderSettingsTab(c){
     const s=DB.get('settings',{});
-    c.innerHTML='<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+(s.storeName||'NOIR')+'"></div><div class="form-group"><label class="form-label">العملة</label><input class="form-input" id="setCurrency" value="'+(s.currency||'ر.س')+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="'+(s.adminPass||'1234')+'"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
+    c.innerHTML='<div class="panel"><h3>إعدادات المتجر</h3><div class="form-group"><label class="form-label">اسم المتجر</label><input class="form-input" id="setName" value="'+(s.storeName||'NOIR')+'"></div><div class="form-group"><label class="form-label">العملة</label><input class="form-input" id="setCurrency" value="'+(s.currency||'ر.س')+'"></div><div class="form-group"><label class="form-label">كلمة المرور</label><input class="form-input" id="setPass" value="'+(s.adminPass||'1234')+'"></div>
+      <div class="form-group"><label class="form-label">اللون الأساسي (الذهبي)</label><input type="color" id="setPrimary" value="'+(s.primaryColor||'#C6A66A')+'" style="width:100%;height:45px;border-radius:10px;background:transparent;border:none"></div>
+      <div class="form-group"><label class="form-label">لون الخلفية (الداكن)</label><input type="color" id="setBg" value="'+(s.bgStart||'#101722')+'" style="width:100%;height:45px;border-radius:10px;background:transparent;border:none"></div><button class="btn-full" onclick="Admin.saveSettings()">حفظ ✓</button></div>';
   },
-  async saveSettings(){try{await db.saveSettings({storeName:$('setName').value.trim()||'NOIR',currency:$('setCurrency').value.trim()||'ر.س',adminPass:$('setPass').value||'1234'});toast('تم الحفظ ✓','ok');}catch(e){toast('فشل الحفظ','err');}}
+  async saveSettings(){try{await db.saveSettings({storeName:$('setName').value.trim()||'NOIR',currency:$('setCurrency').value.trim()||'ر.س',adminPass:$('setPass').value||'1234',primaryColor:$('setPrimary').value,bgStart:$('setBg').value});toast('تم الحفظ ✓','ok');}catch(e){toast('فشل الحفظ','err');}}
 };
 document.addEventListener('DOMContentLoaded',()=>{seedIfEmpty();Admin.render()});
 window.App=App;window.Admin=Admin;window.DB=DB;
