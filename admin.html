@@ -61,6 +61,8 @@ select.form-input{cursor:pointer}
 .file-input{width:100%;padding:12px;background:rgba(16,23,34,0.7);border:1px dashed var(--gold);border-radius:10px;color:var(--ivory);cursor:pointer}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="header">
@@ -162,7 +164,7 @@ const Admin = {
   renderOrdersTab: async function(c){
     const orders = await db.getOrders();
     c.innerHTML='<div class="panel"><h3>الطلبات ('+orders.length+')</h3>'+(orders.length?orders.map(o=>{
-      const loc = (o.location_lat && o.location_lng) ? '<a href="https://maps.google.com/?q='+o.location_lat+','+o.location_lng+'" target="_blank" style="color:#527D70;font-size:11px;display:block;margin-top:4px">📍 عرض موقع العميل</a>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
+      const loc = (o.location_lat && o.location_lng) ? '<div style="display:flex;gap:6px;margin-top:6px"><button onclick="showOrderOnMap('+o.location_lat+','+o.location_lng+',\''+o.id+'\',\''+o.customer_name+'\')" style="background:#527D70;color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700">🗺️ الخريطة</button><button onclick="openGoogleMaps('+o.location_lat+','+o.location_lng+')" style="background:#1B2938;color:#C6A66A;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700">📍 جوجل ماب</button></div>' : '<span style="color:var(--gray);font-size:11px">📍 لا يوجد موقع</span>';
       const items = (o.order_items || []).map(i=>'<div style="font-size:11px;color:var(--gray);margin-bottom:2px">• '+i.product_name+' × '+i.quantity+' = '+(i.price*i.quantity)+' ر.س</div>').join('');
       return '<div class="row-item" style="flex-direction:column;align-items:flex-start;padding:14px;margin-bottom:10px"><div style="width:100%;display:flex;justify-content:space-between;margin-bottom:8px"><div class="row-title">طلب #'+o.id.slice(-6)+'</div><select class="form-input" style="width:auto;padding:4px 8px;font-size:11px" onchange="Admin.updateOrderStatus(\''+o.id+'\',this.value)"><option '+(o.status==='جديد'?'selected':'')+'>جديد</option><option '+(o.status==='قيد التجهيز'?'selected':'')+'>قيد التجهيز</option><option '+(o.status==='مكتمل'?'selected':'')+'>مكتمل</option></select></div><div style="color:var(--gold);font-weight:700;font-size:14px;margin-bottom:4px">👤 '+o.customer_name+'</div><div style="color:var(--ivory);font-size:12px;margin-bottom:2px">📱 '+o.phone+'</div><div style="color:var(--gray);font-size:11px;margin-bottom:6px">🏠 '+(o.address||'لا يوجد عنوان')+'</div>'+loc+'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);width:100%"><div style="color:var(--gold);font-size:11px;font-weight:700;margin-bottom:4px">المنتجات:</div>'+items+'</div><div style="color:var(--gold);font-weight:800;margin-top:6px">الإجمالي: '+o.total+' ر.س</div></div>';
     }).join(''):'<p style="color:var(--gray);text-align:center;padding:20px">لا توجد طلبات</p>')+'</div>';
@@ -181,6 +183,15 @@ const Admin = {
   },
   async saveSettings(){try{await db.saveSettings({storeName:$('setName').value.trim()||'NOIR',currency:$('setCurrency').value.trim()||'ر.س',adminPass:$('setPass').value||'1234',primaryColor:$('setPrimary').value,bgStart:$('setBg').value});toast('تم الحفظ ✓','ok');}catch(e){toast('فشل الحفظ','err');}}
 };
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI / 180;
+  const dLng = (lng2-lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 document.addEventListener('DOMContentLoaded',()=>{seedIfEmpty();Admin.render()});
 window.App=App;window.Admin=Admin;window.DB=DB;
 </script>
